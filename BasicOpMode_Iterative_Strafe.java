@@ -43,38 +43,39 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     private DcMotor backRightDrive = null;
 
     //SpeedFactor
-    private boolean lastPressed = false;
     private double speedFactor = 1;
-    private Servo servo = null;
+    private boolean lastPressed = false;
+
+
     /*
      * Code to run ONCE when the driver hits INIT
      */
     @Override
     public void init() {
-        telemetry.addData("Status", "Initialized");
-        /*
-        back right = port 0
-        back left = port 1
-        front right = port 2??
-        front left = port 3??
-         */
+        telemetry.addData("Status", "Initializing");
+
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
+
+        //Drive declaration
         frontLeftDrive  = hardwareMap.get(DcMotor.class, "front_left_drive");
         frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
         backLeftDrive = hardwareMap.get(DcMotor.class, "back_left_drive");
         backRightDrive = hardwareMap.get(DcMotor.class, "back_right_drive");
-        servo = hardwareMap.get(Servo.class, "testServo");
-        servo.setPosition(0.0);
-        //servo.setPosition(0);
+
+
+
         // Most robots need the motor on one side to be reversed to drive forward
         // Reverse the motor that runs backwards when connected directly to the battery
+
+        //Drive settings
         frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
-        // Tell the driver that initialization is complete.
+
+
         telemetry.addData("Status", "Initialized");
     }
 
@@ -99,43 +100,42 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     @Override
     public void loop() {
         // Setup a variable for each drive wheel to save power level for telemetry
-        double r = Math.hypot(gamepad1.left_stick_x, gamepad1.left_stick_y);
-        double robotAngle = Math.atan2(gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4;
-        double rightX = gamepad1.right_stick_x;
-        final double v1 = r * Math.cos(robotAngle) + rightX;
-        final double v2 = r * Math.sin(robotAngle) - rightX;
-        final double v3 = r * Math.sin(robotAngle) + rightX;
-        final double v4 = r * Math.cos(robotAngle) - rightX;
-        // Choose to drive using either Tank Mode, or POV Mode
-        // Comment out the method that's not used.  The default below is POV.
 
-        // POV Mode uses left stick to go forward, and right stick to turn.
-        /*if (gamepad1.dpad_down && speedFactor>=0.2 && lastPressed!=gamepad1.dpad_down) {
+        //Set power for wheels based on math
+        double drive = gamepad1.left_stick_y;
+        double strafe = gamepad1.left_stick_x;
+        double turn = gamepad1.right_stick_x;
+        final double v1 = drive + strafe + turn;
+        final double v2 = drive - strafe - turn;
+        final double v3 = drive - strafe + turn;
+        final double v4 = drive + strafe - turn;
+
+        //Change speed factor
+        if (gamepad1.dpad_down && speedFactor>=0.2 && lastPressed!=gamepad1.dpad_down) {
             speedFactor -= .1;
         } else if (gamepad1.dpad_up && speedFactor<=0.9 && lastPressed!=gamepad1.dpad_up) {
             speedFactor += .1;
-        }*/
-
-        // Tank Mode uses one stick to control each wheel.
-        // - This requires no math, but it is hard to drive forward slowly and keep straight.
-        // leftPower  = -gamepad1.left_stick_y ;
-        // rightPower = -gamepad1.right_stick_y ;
-        if (gamepad1.a) {
-            servo.setPosition(0.3);
-        } else if (gamepad1.b) {
-            servo.setPosition(0.7);
         }
+        lastPressed = gamepad1.dpad_down || gamepad1.dpad_up;
+
+
         // Send calculated power to wheels
-        frontLeftDrive.setPower(v1);
-        frontRightDrive.setPower(v2);
-        backLeftDrive.setPower(v3);
-        backRightDrive.setPower(v4);
-        // Show the elapsed game time and wheel power.
+        frontLeftDrive.setPower(v1*speedFactor);
+        frontRightDrive.setPower(v2*speedFactor);
+        backLeftDrive.setPower(v3*speedFactor);
+        backRightDrive.setPower(v4*speedFactor);
+
+
+
+        // Give information
         telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Speed Factor", Math.round(speedFactor*10));
-        telemetry.addData("Servo: ",servo.getPosition());
-        //telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-        lastPressed = gamepad1.dpad_up || gamepad1.dpad_down;
+        telemetry.addData("Speed Factor", "Speed Factor" + Math.round(speedFactor*10));
+        telemetry.addData("Power", "Left Front Power: "+v1);
+        telemetry.addData("Power", "Left Right Power: "+v2);
+        telemetry.addData("Power", "Back Left Power: "+v3);
+        telemetry.addData("Power", "Left Right Power: "+v4);
+
+        telemetry.update();
     }
 
     /*
