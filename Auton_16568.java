@@ -272,15 +272,17 @@ public class Auton_16568 extends OpMode{
 
             case 1:
                 targetPosition = DriveTrain(16); //test forward/backward
-                nextStep = 2;
+                nextStep = 3;
                 step = 0;
                 break;
 
             case 2:
+                /**
                 targetPosition = strafe(16, "left"); //test strafe left/right
                 nextStep = 3;
                 step = 0;
                 break;
+                */
             case 3:
                 gyroTarget = 270; //gyro, imu turn
                 gyroRange = 5;
@@ -290,8 +292,6 @@ public class Auton_16568 extends OpMode{
                 nextStep = 4;
                 step = -1;
                 break;
-
-
         }
 
 
