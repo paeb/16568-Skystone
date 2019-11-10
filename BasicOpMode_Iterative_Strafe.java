@@ -11,25 +11,13 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-/**
- * This file contains an example of an iterative (Non-Linear) "OpMode".
- * An OpMode is a 'program' that runs in either the autonomous or the teleop period of an FTC match.
- * The names of OpModes appear on the menu of the FTC Driver Station.
- * When an selection is made from the menu, the corresponding OpMode
- * class is instantiated on the Robot Controller and executed.
- *
- * This particular OpMode just executes a basic Tank Drive Teleop for a two wheeled robot
- * It includes all the skeletal structure that all iterative OpModes contain.
- *
- * Use Android Studios to Copy this Class, and Paste it into your team's code folder with a new name.
- * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
- */
 
-@TeleOp(name="Basic: Iterative OpMode", group="Iterative Opmode")
+@TeleOp(name="Basic: Iterative OpMode3", group="Iterative Opmode")
 
 public class BasicOpMode_Iterative_Strafe extends OpMode
 {
@@ -46,6 +34,11 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     private double speedFactor = 1;
     private boolean lastPressed = false;
 
+    //Xrail Y Movement
+    private DcMotor stringWheel = null;
+    private double wheelSpeed = .5;
+    private boolean wheelLocked = false;
+    private boolean lastButtonPressed = false;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -54,19 +47,19 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     public void init() {
         telemetry.addData("Status", "Initializing");
 
-        //Drive declaration
-        frontLeftDrive  = hardwareMap.get(DcMotor.class, "front_left_drive");
-        frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
-        backLeftDrive = hardwareMap.get(DcMotor.class, "back_left_drive");
-        backRightDrive = hardwareMap.get(DcMotor.class, "back_right_drive");
-
-
-        //Drive settings
+        //Drive init
+        frontLeftDrive  = hardwareMap.get(DcMotor.class, "fl"); //Port 3
+        frontRightDrive = hardwareMap.get(DcMotor.class, "fr");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "bl");
+        backRightDrive = hardwareMap.get(DcMotor.class, "br"); //Port 0
         frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
+        //Xrail init
+        stringWheel = hardwareMap.get(DcMotor.class,"string_wheel"); //Port 0
+        stringWheel.setDirection(DcMotor.Direction.REVERSE);
 
         telemetry.addData("Status", "Initialized");
     }
@@ -97,18 +90,38 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
         double drive = gamepad1.left_stick_y;
         double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
-        final double v1 = drive + strafe + turn;
-        final double v2 = drive - strafe - turn;
-        final double v3 = drive - strafe + turn;
-        final double v4 = drive + strafe - turn;
+        final double v1 = drive - strafe + turn;
+        final double v2 = drive + strafe - turn;
+        final double v3 = drive + strafe + turn;
+        final double v4 = drive - strafe - turn;
+
 
         //Change speed factor
-        if (gamepad1.dpad_down && speedFactor>=0.2 && lastPressed!=gamepad1.dpad_down) {
+        if (gamepad1.dpad_down && speedFactor >= 0.2 && lastPressed!=gamepad1.dpad_down) {
             speedFactor -= .1;
-        } else if (gamepad1.dpad_up && speedFactor<=0.9 && lastPressed!=gamepad1.dpad_up) {
+        } else if (gamepad1.dpad_up && speedFactor <= 0.9 && lastPressed!=gamepad1.dpad_up) {
             speedFactor += .1;
         }
         lastPressed = gamepad1.dpad_down || gamepad1.dpad_up;
+
+
+        //Locking Mechanics for the xrail string wheel
+        if (gamepad1.b && !lastButtonPressed){
+            wheelLocked = true;
+        } else {
+            wheelLocked = false;
+        }
+        lastButtonPressed = gamepad1.b;
+
+
+        //Movement for the xrail string wheel
+        if (gamepad1.left_trigger > 0 && !wheelLocked){
+            stringWheel.setPower(wheelSpeed);
+        } else if (gamepad1.right_trigger > 0 && !wheelLocked){
+            stringWheel.setPower(wheelSpeed * -1);
+        } else {
+            stringWheel.setPower(0);
+        }
 
 
         // Send calculated power to wheels
@@ -117,15 +130,17 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
         backLeftDrive.setPower(v3*speedFactor);
         backRightDrive.setPower(v4*speedFactor);
 
-
-
-        // Give information
+        // Telemetry output
         telemetry.addData("Status", "Run Time: " + runtime.toString());
+        telemetry.addData("------------", "----------------");
         telemetry.addData("Speed Factor", "Speed Factor" + Math.round(speedFactor*10));
-        telemetry.addData("Power", "Left Front Power: "+v1);
-        telemetry.addData("Power", "Left Right Power: "+v2);
-        telemetry.addData("Power", "Back Left Power: "+v3);
-        telemetry.addData("Power", "Left Right Power: "+v4);
+        telemetry.addData("------------", "----------------");
+        telemetry.addData("Power", "Left Front Power: " + v1);
+        telemetry.addData("Power", "Left Right Power: " + v2);
+        telemetry.addData("Power", "Back Left Power: " + v3);
+        telemetry.addData("Power", "Left Right Power: " + v4);
+        telemetry.addData("------------", "----------------");
+        telemetry.addData("X-Rail Height Locked", "X-Rail Height Locked: " + wheelLocked);
 
         telemetry.update();
     }
@@ -136,5 +151,4 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     @Override
     public void stop() {
     }
-
 }
