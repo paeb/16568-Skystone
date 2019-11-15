@@ -90,6 +90,7 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
         double drive = gamepad1.left_stick_y;
         double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
+
         final double v1 = drive - strafe + turn;
         final double v2 = drive + strafe - turn;
         final double v3 = drive + strafe + turn;
@@ -107,9 +108,7 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
 
         //Locking Mechanics for the xrail string wheel
         if (gamepad1.b && !lastButtonPressed){
-            wheelLocked = true;
-        } else {
-            wheelLocked = false;
+            wheelLocked = !wheelLocked;
         }
         lastButtonPressed = gamepad1.b;
 
@@ -132,7 +131,6 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
 
         // Telemetry output
         telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("------------", "----------------");
         telemetry.addData("Speed Factor", "Speed Factor" + Math.round(speedFactor*10));
         telemetry.addData("------------", "----------------");
         telemetry.addData("Power", "Left Front Power: " + v1);
