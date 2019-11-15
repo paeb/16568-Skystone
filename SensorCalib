@@ -159,7 +159,7 @@ public class SensorCalib extends OpMode
         // when you initialize the IMU in an opmode in which it is used. If you
         // have more than one IMU on your robot, you'll of course want to use
         // different configuration file names for each.
-        String filename = "AdafruitIMUCalibration.json"; //cbt.java
+        String filename = "BNO055IMUCalibration.json"; //cbt.java
         File file = AppUtil.getInstance().getSettingsFile(filename);
         ReadWriteFile.writeFile(file, calibrationData.serialize());
         telemetry.log().add("saved to '%s'", filename);
