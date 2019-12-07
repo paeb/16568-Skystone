@@ -36,8 +36,8 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
 
     //Xrail Y Movement
     private DcMotor stringWheel = null;
-    private double wheelSpeed = .5;
-    private double XrailWheelSpeed = .15;
+    private double wheelSpeed = 1;
+    private double XrailWheelSpeed = .6;
     private boolean lastButtonPressed = false;
 
     //Foundation Grabber
@@ -53,7 +53,7 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
     //Intake Arms
     private Servo armLeft = null;
     private Servo armRight = null;
-    private double armSpeed = .05;
+
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -82,10 +82,8 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
         intakeServo = hardwareMap.get(Servo.class, "intakeServo");
         intakeServo.setPosition(0.0);
 
-        armLeft = hardwareMap.get(Servo.class, "intakeServo");
-        armRight = hardwareMap.get(Servo.class, "intakeServo");
-        armLeft.setPosition(0.0);
-        armRight.setPosition(0.0);
+        armLeft = hardwareMap.get(Servo.class, "armLeft");
+        armRight = hardwareMap.get(Servo.class, "armRight");
 
         telemetry.addData("Status", "Initialized");
     }
@@ -137,7 +135,7 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
 
 
         //Movement for the xrail string wheel
-        if (gamepad1.left_trigger > 0){
+        if (gamepad1.left_trigger > 0 && stringWheel.getCurrentPosition() < 0){
             stringWheel.setPower(wheelSpeed);
         } else if (gamepad1.right_trigger > 0){
             stringWheel.setPower(wheelSpeed * -1);
@@ -161,10 +159,10 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
 
         if (gamepad1.x){
             armLeft.setPosition(0);
-            armRight.setPosition(0);
+            armRight.setPosition(1);
         } else if (gamepad1.y){
             armLeft.setPosition(1);
-            armRight.setPosition(1);
+            armRight.setPosition(0);
         }
 
 
@@ -177,11 +175,11 @@ public class BasicOpMode_Iterative_Strafe extends OpMode
         // Telemetry output
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Speed Factor", "Speed Factor" + Math.round(speedFactor*10));
+        telemetry.addData("String Wheel Position:  ",stringWheel.getCurrentPosition());
         telemetry.addData("Power", "Left Front Power: " + v1);
         telemetry.addData("Power", "Left Right Power: " + v2);
         telemetry.addData("Power", "Back Left Power: " + v3);
         telemetry.addData("Power", "Left Right Power: " + v4);
-        telemetry.addData("control", "x " + gamepad1.x);
 
         telemetry.update();
     }
