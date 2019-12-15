@@ -1,0 +1,336 @@
+package org.firstinspires.ftc.teamcode;
+
+import android.graphics.Color;
+
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import java.util.List;
+import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection;
+import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
+import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.robotcore.hardware.ColorSensor;
+
+@Autonomous(name = "Autonomous_16568")
+
+//@Disabled
+public class Autonomous_16568 extends OpMode{
+    //Declare the DcMotors
+
+    DcMotor fl; //front left motor
+    DcMotor fr; //front right motor
+    DcMotor bl; //back left motor
+    DcMotor br; //back right motor
+    private int step = 1;
+    private double wheelCircum = (1.97 * 2) * Math.PI;
+    private int ticksPerTurn = 1120; //our gear ratio is 1:1
+    private int targetPosition = 0;
+    private boolean flReached = false;
+    private boolean frReached = false;
+    private boolean blReached = false;
+    private boolean brReached = false;
+    private int nextStep = 0;
+    private BNO055IMU imu;
+    private AngleUnit unit = AngleUnit.DEGREES; //for the gyro
+    private double gyroTarget;
+    private double gyroRange;
+    private double gyroActual;
+    private double minSpeed;
+    private double addSpeed;
+    private ColorSensor colorSensor;
+    private BNO055IMU.Parameters parameters;
+    private float lastAngle = 0;
+    private static final double kp = 0.7;
+    private static final double kd = 0.6;
+    private static final double ki = 0.0001;
+    private double error = 0;
+    private double prev_error;
+    private double diff_error;
+    private double sum_error;
+
+
+
+
+
+
+    // Retrieve and initialize the IMU. We expect the IMU to be attached to an I2C port
+    // on a Core Device Interface Module, configured to be a sensor of type "AdaFruit IMU",
+    // and named "imu".
+
+    private void DriveTrain(int distance) { //if positive, forwards. if negative, backwards
+
+        int position = calculateTicks(distance);
+
+        double power = 1; //starts at 1, then reduces as it gets closer
+        //double power = powerScaleDistance(distance);
+
+        if (position < 0) {
+            position = -position; //go backwards
+        }
+        /*
+        else if (position > 0) {
+            position = position; //go forwards
+        }
+        else {
+            position = 0;
+        }
+        */
+
+        //power-scale factor, which is based on the distance needed to travel
+
+        fl.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); //RunMode is an enum, a construct that defines
+        //possible values, like STOP_AND_RESET_ENCODER
+        //fl.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        fl.setTargetPosition(position);
+        fl.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        fr.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //fr.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        fr.setTargetPosition(position);
+        fr.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        bl.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //bl.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        bl.setTargetPosition(position);
+        bl.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        br.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //br.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        br.setTargetPosition(position);
+        br.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        fl.setPower(power);
+        fr.setPower(power);
+        bl.setPower(power);
+        br.setPower(power);
+    }
+
+    private void PIDcontrol() {
+        //here the distance represents the offset from the target Position
+        prev_error = error;
+        //get the error, or the distance from the target
+        double error = Math.abs(Math.abs(fl.getCurrentPosition()) - (Math.abs(targetPosition) - 20));
+
+        //to make the error fit within the range of 0-1, we can divide it by the original targetPosition
+        //i.e if the error is like 1600 in the beginning, then obviously the target position is 1600
+        //but as error gets smaller, gets closer
+        error /= targetPosition; //scales it, halfway becomes error of 0.5
+
+        diff_error = error - prev_error; //difference in the errors
+        sum_error += error; //add the error to the total number of errors
+
+        //since error is too large in this case
+        double driveSpeed = kp * error + ki * sum_error + kd * diff_error;
+
+        fl.setPower(driveSpeed);
+        fr.setPower(driveSpeed);
+        bl.setPower(driveSpeed);
+        br.setPower(driveSpeed);
+    }
+
+    private int calculateTicks(int distance) {
+        double circumTraveled = distance / wheelCircum;
+        int position = (int) (ticksPerTurn * circumTraveled); //encoder value
+        return position;
+    }
+    private void gyroCorrect(double gyroTarget) { //turn function utilizing the imu
+        //lets say we are at 90 degree angle
+
+        //also remember the calibration file
+        //some things to change, the commented out part at the top
+        //maybe the run to encoder
+        //turn function
+        //how it's called
+        double gyroActual = getCurrentHeading();
+
+        /**
+         * these are constants, should be defined here
+         */
+        final double gyroRange = 0.5;
+        final double minSpeed = 0.4;
+        final double addSpeed = 0.1;
+        //double gyroActual = getGyroRotation(unit) - lastAngle; //gets the current gyro rotation, but if we want to
+        //make the new heading 0 after it turns for simple code, we need to make changes
+        //basically we say that the new GyroTarget is
+
+        //let's say the last angle achieved was 90 degrees...
+        //by subtracting it we make the new heading 0
+
+        //gyroTarget can stay the same since it is relative to the new heading
+
+        //while ((gyroTarget - getGyroRotation(unit) + 360.0) % 360.0 < 0.5) {
+
+        //this makes it an actual angle between 0 and 360 anyways, so it doesn't matter if the target
+        //is weird for the gyro or actually between 0 and 360
+
+        //assume that the gyroTarget is 90, and current position is 0. If threhold is 5 degrees, then
+        double delta = (gyroTarget - gyroActual + 360.0) % 360.0; // in case it is negative
+        //then delta is 90. Since the absolute value is greater than the gyroRange,
+        //
+
+        if (delta > 180.0) {
+            delta -= 360.0; // delta becomes between -180 and 180
+            //because the range is from 0-> 180 and -180-> 0 instead of 0-> 360
+        }
+
+        if (Math.abs(delta) > gyroRange) {
+            double gyroMod = delta / 45.0; // if delta is less than 45 and bigger than -45, this will make a scale from
+            // -1 to 1
+
+            if (Math.abs(gyroMod) > 1.0) {
+                gyroMod = Math.signum(gyroMod); //makes gyroMod -1 or 1 if error is more than 45
+                // or less than -45 degrees
+            }
+
+            //if the error is more than 180, then the power is positive, and it turns to the left
+            //if the error is less than 180, the power in the turn in negative, and it turns to the
+            //right
+            //if the error is larger, faster speed
+            this.turn(minSpeed * Math.signum(gyroMod) + addSpeed * gyroMod);
+        } else {
+            turn(0.0);
+        }
+        //}
+    }
+    private void setLastAngle() {
+        lastAngle = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES).firstAngle;
+    }
+
+    private double getCurrentHeading() { //the relative one, which is after the heading becomes 0
+        return gyroActual = getGyroRotation(unit) - lastAngle;
+    }
+
+    private void turn(double power) {
+        //must set the runMode to run without encoder in order for it to run
+        fl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        fr.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        bl.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        br.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        fl.setPower(power);
+        fr.setPower(-power);
+        bl.setPower(power);
+        br.setPower(-power);
+    }
+
+    //gets current angle position, which is relative to initial initialization (not relative to last position)
+
+    private float getGyroRotation(AngleUnit unit) {
+        //first angle means the x coordinate, or the heading
+        return imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, unit).firstAngle;
+    }
+
+    @Override
+    public void init() {
+        fl = hardwareMap.dcMotor.get("fl");
+        fr = hardwareMap.dcMotor.get("fr");
+        bl = hardwareMap.dcMotor.get("bl");
+        br = hardwareMap.dcMotor.get("br");
+
+        //colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
+
+        fl.setDirection(DcMotor.Direction.FORWARD); //because the wheels are pointed in opposite directions
+        fr.setDirection(DcMotor.Direction.REVERSE);
+        bl.setDirection(DcMotor.Direction.FORWARD);
+        br.setDirection(DcMotor.Direction.REVERSE);
+
+        parameters = new BNO055IMU.Parameters();
+        parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
+        //parameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
+        parameters.calibrationDataFile = "BNO055IMUCalibration.json"; // see the calibration sample opmode
+        parameters.loggingEnabled      = true;
+        parameters.loggingTag          = "IMU";
+
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+
+        //initialize with these parameters
+        imu.initialize(parameters);
+        //parameters.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
+    }
+    @Override
+    public void start() {
+        telemetry.addLine("Status: Intialized. Ready to go.");
+        telemetry.update();
+    }
+    @Override
+    public void loop() {
+
+        //afterwards switch to state machines
+        //get to
+        switch(step) {
+            case -1:
+                flReached = Math.abs(fl.getCurrentPosition()) >= Math.abs(targetPosition) - 20; //if it's negative it will never stop... but targetPosition would be positive
+                frReached = Math.abs(fr.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+                blReached = Math.abs(bl.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+                brReached = Math.abs(br.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+
+                if (flReached && frReached && blReached && brReached) {
+                    //update to see if they are still under the target position
+                    step = nextStep;
+                }
+                else {
+                    PIDcontrol(); //uses PID control to adjust the power based on the position relative to the target
+                }
+
+                break;
+            case 0:
+                if (gyroTarget - getCurrentHeading() < 0.5) { //reached target
+                    setLastAngle(); //sets the last angle so the next turn will deduct the current angle and make the heading 0
+                }
+                else {
+                    gyroCorrect(gyroTarget); //we re-run gyroCorrect in order to get adaptable speed
+                }
+                break;
+            case 1:
+                gyroCorrect(90);
+                gyroTarget = 90;
+                step = 0;
+                nextStep = 2;
+                break;
+            case 2:
+                gyroTarget = 0;
+                telemetry.addLine("Turn finished.");
+                break;
+            //adapted drive
+            case 3:
+                DriveTrain(16);
+                targetPosition = calculateTicks(16);
+                nextStep = 4;
+                step = -1;
+                break;
+            case 4:
+                telemetry.addLine("Drive completed.");
+                break;
+            case 5:
+                telemetry.addLine();
+                telemetry.update();
+        }
+
+/**
+ telemetry.addLine("fl: " + fl.getCurrentPosition());
+ telemetry.addLine("fr: " + fr.getCurrentPosition());
+ telemetry.addLine("bl: " + bl.getCurrentPosition());
+ telemetry.addLine("br: " + br.getCurrentPosition());
+ telemetry.addLine("red" + colorSensor.red());
+ telemetry.addLine("blue" + colorSensor.blue());
+ telemetry.addLine("green" + colorSensor.green());
+ telemetry.update();
+ */
+        telemetry.addData("Current Heading:", getCurrentHeading());
+        telemetry.addData("Current Motor Position", fl.getCurrentPosition());
+        telemetry.update();
+
+    }
+    @Override
+    public void stop() {
+
+    }
+}
