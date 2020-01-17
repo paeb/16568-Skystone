@@ -1,0 +1,148 @@
+package org.firstinspires.ftc.teamcode;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ReadWriteFile;
+import android.content.Context;
+import android.os.Environment;
+
+import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.ArrayList;
+
+import static java.lang.Long.parseLong;
+import static java.lang.Integer.parseInt;
+
+@Autonomous(name="Auton With Driver", group="Iterative Opmode")
+public class ReadFile extends OpMode {
+    private double drive = 0;
+    private double strafe = 0;
+    private double turn = 0;
+    private DcMotor frontLeftDrive = null;
+    private DcMotor frontRightDrive = null;
+    private DcMotor backLeftDrive = null;
+    private DcMotor backRightDrive = null;
+    private double speedFactor = 1;
+    private int commandIndex = 0;
+    private Context readFile = null;
+    private ArrayList<String> commands = null;
+    private double flPos = 0;
+    private double frPos = 0;
+    private double blPos = 0;
+    private double brPos = 0;
+    private File directory = new File(String.valueOf(Environment.getExternalStorageDirectory()));
+    private boolean flReached = false;
+    private boolean frReached = false;
+    private boolean blReached = false;
+    private boolean brReached = false;
+
+    private void DriveTrain(int position) { //if positive, forwards. if negative, backwards
+
+        double power = 0.7; //starts at 0.7, then reduces as it gets closer
+        //double power = powerScaleDistance(distance);
+
+        position = -position; //right now, positive number goes backwards, so do opposite
+        
+
+        frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); //RunMode is an enum, a construct that defines
+        //possible values, like STOP_AND_RESET_ENCODER
+        //fl.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontLeftDrive.setTargetPosition(position);
+        frontLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //fr.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightDrive.setTargetPosition(position);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftDrive.setTargetPosition(position);
+        backLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightDrive.setTargetPosition(position);
+        backRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        frontLeftDrive.setPower(power);
+        frontRightDrive.setPower(power);
+        backLeftDrive.setPower(power);
+        backRightDrive.setPower(power);
+
+        runTime.reset(); //reset bc PID control method needs the runtime since initialization
+    }
+    public void init() {
+        telemetry.log().add("Recordings:");
+        for (int i=0; i<directory.listFiles().length; i++) {
+            if (directory.listFiles()[i].getName().length()>4) {
+                if (directory.listFiles()[i].getName().substring(directory.listFiles()[i].getName().length() - 4, directory.listFiles()[i].getName().length()).equals(".txt")) {
+                    telemetry.log().add(directory.listFiles()[i].getName());
+                }
+            }
+        }
+        telemetry.log().add("-----------------------");
+        commandIndex = 0;
+        String filename = "autonRecording.txt";
+        File file = new File(Environment.getExternalStorageDirectory()+"/"+filename);
+        telemetry.log().add(""+(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(",").length));
+        telemetry.log().add(""+(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(","))[0]);
+        commands = new ArrayList<String>(Arrays.asList(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(",")));
+        //turns the array of commands, of string into the arraylist
+
+        telemetry.log().add(""+commands.get(0));
+        telemetry.log().add(commands.toString());
+        telemetry.log().add("test");
+        //telemetry.log().add(""+writeText.commands.toArray()[commandIndex].toString().split(",")[0].split(" "));
+        telemetry.log().add(""+commands.size());
+
+        /*for (int i=0; i<writeText.commands.toArray()[0].toString().length(); i++) {
+            telemetry.log().add(""+writeText.commands.toArray()[0].toString().charAt(i));
+        }*/
+        frontLeftDrive  = hardwareMap.get(DcMotor.class, "fl"); //Port 3
+        frontRightDrive = hardwareMap.get(DcMotor.class, "fr");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "bl");
+        backRightDrive = hardwareMap.get(DcMotor.class, "backRightDrive"); //Port 0
+        frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        telemetry.addData("anyCommandSplit",Arrays.toString(commands.get(0).split("~")[0].replaceAll("  "," ").split(" ",0)));
+        telemetry.update();
+    }
+    public void loop() {
+        //first "line" or iteration
+        flReached = Math.abs(frontLeftDrive.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+        frReached =  Math.abs(frontRightDrive.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+        blReached =  Math.abs(backLeftDrive.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+        brReached =  Math.abs(backRightDrive.getCurrentPosition()) >= Math.abs(targetPosition) - 20;
+        
+        if (frontLeftDrive.getCurrentPosition()) {
+            
+        }
+
+        if (commandIndex<commands.toArray().length) {
+
+            flPos = parseInt(commands.get(commandIndex).split(" ")[0]);
+            frPos = parseInt(commands.get(commandIndex).split(" ")[1]);
+            blPos = parseInt(commands.get(commandIndex).split(" ")[2]);
+            brPos = parseInt(commands.get(commandIndex).split(" ")[3]);
+
+        } else {
+            frontLeftDrive.setPower(0);
+            frontRightDrive.setPower(0);
+            backLeftDrive.setPower(0);
+            backRightDrive.setPower(0);
+        }
+        telemetry.update();
+    }
+    public void stop() {
+
+    }
+}
