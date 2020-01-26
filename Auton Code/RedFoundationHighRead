@@ -1,0 +1,394 @@
+package org.firstinspires.ftc.teamcode;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ReadWriteFile;
+import android.content.Context;
+import android.os.Environment;
+
+import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.ArrayList;
+
+import static java.lang.Long.parseLong;
+import static java.lang.Integer.parseInt;
+import static java.lang.Double.parseDouble;
+import static java.lang.Boolean.parseBoolean;
+
+@Autonomous(name="RedFoundationHighRead", group="Iterative Opmode")
+public class RedFoundationHighRead extends OpMode {
+    private double drive = 0;
+    private double strafe = 0;
+    private double turn = 0;
+    private DcMotor frontLeftDrive = null;
+    private DcMotor frontRightDrive = null;
+    private DcMotor backLeftDrive = null;
+    private DcMotor backRightDrive = null;
+    private double XrailWheelSpeed = .6;
+    private double speedFactor = 1;
+    private int commandIndex = 0;
+    private Context readFile = null;
+    private ArrayList<String> commands = null;
+    private int flPos = 0;
+    private int frPos = 0;
+    private int blPos = 0;
+    private int brPos = 0;
+    private int swPos = 0;
+    private boolean dUp = false;
+    private boolean dDown = false;
+    private boolean aPressed = false;
+    private boolean bPressed = false;
+    private boolean xPressed = false;
+    private boolean yPressed = false;
+    private File directory = new File(String.valueOf(Environment.getExternalStorageDirectory()));
+    private boolean flReached = false;
+    private boolean frReached = false;
+    private boolean blReached = false;
+    private boolean brReached = false;
+    private boolean swReached = false;
+    private boolean notEmpty = false;
+    private boolean oneIsNull = false;
+    private boolean servoGrab = false;
+    private int iter = 0;
+    private DcMotor stringWheel = null;
+    private DcMotor xrail = null;
+    private Servo armLeft = null;
+    private Servo intakeServo = null;
+    private int lastflPos = 0;
+    private int lastfrPos = 0;
+    private int lastblPos = 0;
+    private int lastbrPos = 0;
+    private boolean out = false;
+    private boolean locked = false;
+    private boolean dLeft = false;
+    private boolean dRight = false;
+
+    private void DriveTrain(int position1, int position2, int position3, int position4, int position5) { //if positive, forwards. if negative, backwards
+
+        double power = 1; //starts at 0.7, then reduces as it gets closer
+        //double power = powerScaleDistance(distance);
+
+        position1 = -position1; //right now, positive number goes backwards, so do opposite
+        position2 = -position2; //right now, positive number goes backwards, so do opposite
+        position3 = -position3; //right now, positive number goes backwards, so do opposite
+        position4 = -position4; //right now, positive number goes backwards, so do opposite
+
+
+        //frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); //RunMode is an enum, a construct that defines
+        //possible values, like STOP_AND_RESET_ENCODER
+        //fl.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontLeftDrive.setTargetPosition(position1);
+        frontLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        //frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //fr.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightDrive.setTargetPosition(position2);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        //backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftDrive.setTargetPosition(position3);
+        backLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        //backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightDrive.setTargetPosition(position4);
+        backRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        stringWheel.setTargetPosition(position5);
+        stringWheel.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        frontLeftDrive.setPower(power);
+        frontRightDrive.setPower(power);
+        backLeftDrive.setPower(power);
+        backRightDrive.setPower(power);
+    }
+    @Override
+    public void init() {
+        //telemetry logging to test recordings
+        /**
+         telemetry.log().add("Recordings:");
+         for (int i=0; i<directory.listFiles().length; i++) {
+         if (directory.listFiles()[i].getName().length()>4) {
+         if (directory.listFiles()[i].getName().substring(directory.listFiles()[i].getName().length() - 4, directory.listFiles()[i].getName().length()).equals(".txt")) {
+         telemetry.log().add(directory.listFiles()[i].getName());
+         }
+         }
+         }
+         telemetry.log().add("-----------------------");
+         */
+        commandIndex = 0;
+        String filename = "RedFoundationHigh.txt";
+
+        //get the file from the external storage directory
+        File file = new File(Environment.getExternalStorageDirectory()+"/"+filename);
+
+        //telemetry logs for recordings
+        /**
+         telemetry.log().add(""+(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(",").length));
+         telemetry.log().add(""+(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(","))[0]);
+         */
+
+        commands = new ArrayList<String>(Arrays.asList(ReadWriteFile.readFile(file).split("\\[")[1].split("\\]")[0].split(",")));
+        //turns the array of commands, of string into the arraylist
+
+        //telemetry logs
+
+        //telemetry.log().add(""+commands.get(0));
+        telemetry.log().add(commands.toString());
+        //telemetry.log().add("test");
+        //telemetry.log().add(""+writeText.commands.toArray()[commandIndex].toString().split(",")[0].split(" "));
+        telemetry.log().add(""+commands.size());
+
+        frontLeftDrive  = hardwareMap.get(DcMotor.class, "fl"); //Port 3
+        frontRightDrive = hardwareMap.get(DcMotor.class, "fr");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "bl");
+        backRightDrive = hardwareMap.get(DcMotor.class, "br"); //Port 0
+
+        frontLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+
+        frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        //frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER)
+
+        telemetry.addData("anyCommandSplit",Arrays.toString(commands.get(0).split("~")[0].replaceAll("  "," ").split(" ",0)));
+
+        //string wheel init
+        stringWheel = hardwareMap.get(DcMotor.class,"string_wheel"); //Port 0
+        stringWheel.setDirection(DcMotor.Direction.REVERSE);
+
+        stringWheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //stringWheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        xrail = hardwareMap.get(DcMotor.class, "xRailMotor");
+
+        intakeServo = hardwareMap.get(Servo.class, "intakeServo");
+        armLeft = hardwareMap.get(Servo.class, "armLeft");
+        //startingPos = stringWheel.getCurrentPosition();
+
+        telemetry.addData("Status", "Initialized");
+
+        /*for (int i=0; i<writeText.commands.toArray()[0].toString().length(); i++) {
+            telemetry.log().add(""+writeText.commands.toArray()[0].toString().charAt(i));
+        }*/
+
+        //telemetry.addData("anyCommandSplit",Arrays.toString(commands.get(0).split("~")[0].replaceAll("  "," ").split(" ",0)));
+        telemetry.update();
+    }
+    @Override
+    public void start() {
+    }
+    @Override
+    public void loop() {
+        //first "line" or iteration
+
+        if (commandIndex<commands.toArray().length) {
+
+            telemetry.addLine("working.");
+            //String s = commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0)[0];
+            //String s2 = commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0)[1];
+            //String s3 = commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0)[2];
+            //String s4 = commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0)[3];
+
+            //frPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").replaceAll("   ", " ").split(" ", 0)[1]);
+            //blPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").replaceAll("   ", " ").split(" ", 0)[2]);
+            //brPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").replaceAll("   ", " ").split(" ", 0)[3]);
+
+            //if, before the parsing, we find that it's an empty string, then we can skip it or go to the next commandIndex
+
+            //telemetry.addData("Worked:", flPos);
+            //telemetry.addData("Worked:", frPos);
+            //telemetry.addData("Worked:", blPos);
+            //telemetry.addData("Worked:", brPos);
+            //telemetry.addData("Length of a line:", commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0).length);
+
+            String s1 = "";
+            String s2 = "";
+            String s3 = "";
+            String s4 = "";
+            String s5 = "";
+            String s6 = "";
+            String s7 = "";
+            String s8 = "";
+            String s9 = "";
+            String s10 = "";
+            String s11 = "";
+            String s12 = "";
+            String s13 = "";
+
+            int count = 0;
+            for (String e: commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0)) { //each string in the line
+                if (count < commands.get(commandIndex).replaceAll("  ", " ").split(" ", 0).length) {
+                    if (e.equals("")) { //one of these strings is ""
+                        oneIsNull = true;
+                    }
+                    else {
+                        //telemetry.log().add(e);
+                        if (s1.equals("")) {
+                            s1 = e;
+                        }
+                        else if (s2.equals("")) {
+                            s2 = e;
+                        }
+                        else if (s3.equals("")) {
+                            s3 = e;
+                        }
+                        else if (s4.equals("")) {
+                            s4 = e;
+                        }
+                        else if (s5.equals("")) {
+                            s5 = e;
+                        }
+                        else if (s6.equals("")) {
+                            s6 = e;
+                        }
+                        else if (s7.equals("")) {
+                            s7 = e;
+                        }
+                        else if (s8.equals("")) {
+                            s8 = e;
+                        }
+                        else if (s9.equals("")) {
+                            s9 = e;
+                        }
+                        else if (s10.equals("")) {
+                            s10 = e;
+                        }
+                        else if (s11.equals("")) {
+                            s11 = e;
+                        }
+                        else if (s12.equals("")) {
+                            s12 = e;
+                        }
+                        else if (s13.equals("")) {
+                            s13 = e;
+                        }
+                    }
+                    count++;
+                }
+            }
+
+            if (!s1.equals("") && !s2.equals("") && !s3.equals("") && !s4.equals("") && !s5.equals("") && !s6.equals("")
+            && !s7.equals("") && !s8.equals("") && !s9.equals("") && !s10.equals("") && !s11.equals("")) { //if none are empty
+                flPos = -parseInt(s1);
+                frPos = -parseInt(s2);
+                blPos = -parseInt(s3);
+                brPos = -parseInt(s4); //it's usually the opposite
+                swPos = parseInt(s5);
+                dUp = parseBoolean(s6);
+                dDown = parseBoolean(s7);
+                aPressed = parseBoolean(s8);
+                bPressed = parseBoolean(s9);
+                xPressed = parseBoolean(s10);
+                yPressed = parseBoolean(s11);
+                dLeft = parseBoolean(s12);
+                dRight = parseBoolean(s13);
+                //servoGrab = parseBoolean(s5);
+            }
+
+            if (dUp){
+                xrail.setPower(-XrailWheelSpeed);
+            } else if (dDown){
+                xrail.setPower(XrailWheelSpeed);
+            } else {
+                xrail.setPower(0);
+            }
+
+            if (aPressed){
+                armLeft.setPosition(.95);
+                out = true;
+            } else if (bPressed){
+                armLeft.setPosition(.1);
+                out = false;
+            }
+
+            if (out){
+                armLeft.setPosition(.95);
+            }
+
+            if (dLeft && locked){
+                locked = false;
+            } else if (dRight && !locked){
+                locked = true;
+            }
+
+            if (xPressed){
+                intakeServo.setPosition(1);
+            } else if (yPressed){
+                intakeServo.setPosition(0);
+            } else if (!locked){
+                intakeServo.setPosition(.5);
+            }
+
+            DriveTrain(flPos, frPos, blPos, brPos, swPos); //reset encoder values?
+
+            flReached = Math.abs(frontLeftDrive.getCurrentPosition()) >= Math.abs(flPos) - 175;
+            //threshold value to account for the lag, proportionate to power set
+            frReached = Math.abs(frontRightDrive.getCurrentPosition()) >= Math.abs(frPos) - 175;
+            blReached = Math.abs(backLeftDrive.getCurrentPosition()) >= Math.abs(blPos) - 175;
+            brReached = Math.abs(backRightDrive.getCurrentPosition()) >= Math.abs(brPos) - 175;
+            swReached = Math.abs(stringWheel.getCurrentPosition()) >= Math.abs(swPos) - 100;
+
+            if (flReached && frReached && blReached && brReached && swReached) { //once reached, go to next set
+                commandIndex++;
+            }
+
+            //commandIndex++;
+
+            // telemetry.log().add(oneIsNull + "");
+            // telemetry.log().add(count + "");
+            telemetry.log().add(flPos + "");
+            telemetry.log().add(frPos + "");
+            telemetry.log().add(blPos + "");
+            telemetry.log().add(brPos + "");
+            //telemetry.log().add(servoGrab + "");
+            telemetry.log().add(" ");
+            telemetry.log().add(" ");
+            telemetry.log().add(" ");
+            telemetry.log().add(" ");
+            //commandIndex++;
+
+            iter++;
+            /**
+             try {
+             //we replace the double spaces with the single spaces
+             //replaceAll("  ", " ").replaceAll("", " ")
+             flPos = parseInt(commands.get(commandIndex).split(" ")[0]); //get the first element in the iteration as int
+             frPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").split(" ")[1]); //get the second element in the iteration
+             blPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").split(" ")[2]); //get the third element in the iteration
+             brPos = parseInt(commands.get(commandIndex).replaceAll("  ", " ").replaceAll("", " ").split(" ")[3]); //get the fourth element in the iteration
+
+             telemetry.addData("Flpos:", flPos);
+             telemetry.addData("Frpos:", frPos);
+             telemetry.addData("Blpos:", blPos);
+             telemetry.addData("Brpos:", brPos);
+
+             commandIndex++;
+             }
+             catch (NumberFormatException e) {
+             telemetry.addData("flPos:", commands.get(commandIndex).split(" ")[0]);
+             }
+             */
+            telemetry.addData("Iters:", iter);
+        } else {
+            telemetry.addLine("finished.");
+        }
+        telemetry.update();
+
+    }
+    public void stop() {
+    }
+}
