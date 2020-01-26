@@ -369,7 +369,7 @@ public class WriteFile_FINAL extends OpMode
                 }
             }
             catch (Exception e) {
-                telemetry.addLine("Error. Andrew loves men.");
+                telemetry.addLine("Error.");
             }
         }
         /**
@@ -380,7 +380,7 @@ public class WriteFile_FINAL extends OpMode
             fooStream.close();
         }
         catch (Exception e) {
-            telemetry.addLine("Error. Andrew loves men.");
+            telemetry.addLine("Error.");
         }
         /**
         if (file.delete()) { //find the file and delete it
