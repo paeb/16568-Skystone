@@ -63,6 +63,7 @@
                     fr.setPower(0);
                     bl.setPower(0);
                     br.setPower(0);
+                    step = nextStep;
                 } else {
                     double v1correction = 0;
                     double v2correction = 0;
